@@ -1,105 +1,72 @@
-# blockchain-python
-Blockchain básica en Python con prueba de trabajo y API REST en Flask. Proyecto académico para entender cómo se encadenan los bloques y cómo se minan.
-import hashlib
-import datetime
-from flask import Flask, jsonify
-import json
+# Blockchain básica en Python
 
-class Blockchain:
+Blockchain construida desde cero en Python, con prueba de trabajo (Proof of Work), encadenamiento de bloques con SHA-256 y una API REST en Flask para minar bloques, consultar la cadena y validar su integridad.
 
-    def __init__(self):
-        self.chain = []
-        self.create_block(proof=1, previous_hash='0')
+Proyecto educativo: la cadena vive en memoria y corre en un solo nodo. No incluye transacciones ni red entre nodos.
 
-    def create_block(self, proof, previous_hash):
-        block = {
-            'index': len(self.chain) + 1,
-            'timestamp': str(datetime.datetime.now()),
-            'proof': proof,
-            'previous_hash': previous_hash
-        }
-        self.chain.append(block)
-        return block
+## Qué demuestra
 
-    def get_previous_block(self):
-        return self.chain[-1]
+- **Prueba de trabajo:** para minar un bloque hay que encontrar un número cuyo hash SHA-256 empiece con `0000`. Encontrarlo requiere miles de intentos; comprobarlo requiere uno.
+- **Encadenamiento:** cada bloque guarda el hash del bloque anterior. Si alguien modifica un bloque, ese hash deja de coincidir y la cadena se rompe.
+- **Validación:** un endpoint recorre toda la cadena y confirma que los hashes y las pruebas de trabajo son correctos.
 
-    def proof_of_work(self, previous_proof):
-        new_proof = 1
-        check_proof = False
-        while check_proof is False:
-            hash_operation = hashlib.sha256(
-                str(new_proof**3 - previous_proof**3).encode()
-            ).hexdigest()
-            if hash_operation[:4] == '0000':
-                check_proof = True
-            else:
-                new_proof += 1
-        return new_proof
+## Tecnologías
 
-    def hash(self, block):
-        encoded_block = json.dumps(block, sort_keys=True).encode()
-        return hashlib.sha256(encoded_block).hexdigest()
+- Python 3
+- Flask (API REST)
+- `hashlib` (SHA-256) y `json` de la biblioteca estándar
 
-    def is_chain_valid(self, chain):
-        previous_block = chain[0]
-        block_index = 1
-        while block_index < len(chain):
-            block = chain[block_index]
-            if block['previous_hash'] != self.hash(previous_block):
-                return False
-            previous_proof = previous_block['proof']
-            proof = block['proof']
-            hash_operation = hashlib.sha256(
-                str(proof**3 - previous_proof**3).encode()
-            ).hexdigest()
-            if hash_operation[:4] != '0000':
-                return False
-            previous_block = block
-            block_index += 1
-        return True
+## Cómo ejecutarlo
 
-# ── App Flask ──────────────────────────────────────────
-app = Flask(__name__)
-blockchain = Blockchain()
-@app.route('/mine_block', methods=['GET'])
-def mine_block():
-    previous_block = blockchain.get_previous_block()
-    previous_proof = previous_block['proof']
-    proof = blockchain.proof_of_work(previous_proof)
-    previous_hash = blockchain.hash(previous_block)
-    block = blockchain.create_block(proof, previous_hash)
-    response = {
-        'message': 'Bloque minado',
-        'index': block['index'],
-        'timestamp': block['timestamp'],
-        'proof': block['proof'],
-        'previous_hash': block['previous_hash']
-    }
-    return jsonify(response), 200
+```bash
+git clone https://github.com/orojosue28-hue/blockchain-python.git
+cd blockchain-python
+pip install -r requirements.txt
+python blockchain.py
+```
 
-@app.route('/get_chain', methods=['GET'])
-def get_chain():
-    response = {
-        'chain': blockchain.chain,
-        'length': len(blockchain.chain)
-    }
-    return jsonify(response), 200
+El servidor queda en `http://127.0.0.1:5001`.
 
-@app.route('/is_valid', methods=['GET'])
-def is_valid():
-    is_valid_chain = blockchain.is_chain_valid(blockchain.chain)
-    if is_valid_chain:
-        response = {'message': 'Blockchain válida ✓'}
-    else:
-        response = {'message': 'Blockchain inválida ✗'}
-    return jsonify(response), 200
+## Endpoints
 
-# Garcia Orozco Josue
+| Método | Ruta          | Qué hace                                        |
+|--------|---------------|-------------------------------------------------|
+| GET    | `/`           | Lista los endpoints disponibles                 |
+| GET    | `/mine_block` | Mina un bloque nuevo y lo agrega a la cadena    |
+| GET    | `/get_chain`  | Devuelve la cadena completa y su longitud       |
+| GET    | `/is_valid`   | Verifica la integridad de la cadena             |
 
-if __name__ == '__main__':
-    app.run(host='127.0.0.1', port=5001)
+## Ejemplo
 
-@app.route('/mine_block', methods=['GET'])
-def mine_block():
-    previous_block = blockchain.get_previous_block()
+```bash
+curl http://127.0.0.1:5001/mine_block
+```
+
+```json
+{
+  "index": 2,
+  "message": "Bloque minado",
+  "previous_hash": "…hash del bloque génesis…",
+  "proof": 1427,
+  "timestamp": "2026-11-13 13:40:00.000000"
+}
+```
+
+## Estructura de un bloque
+
+| Campo           | Contenido                                   |
+|-----------------|---------------------------------------------|
+| `index`         | Posición del bloque en la cadena            |
+| `timestamp`     | Fecha y hora en que se creó                 |
+| `proof`         | Número que resuelve la prueba de trabajo    |
+| `previous_hash` | Hash SHA-256 del bloque anterior            |
+
+## Limitaciones y siguientes pasos
+
+- La cadena se guarda en memoria: se pierde al apagar el servidor.
+- Los bloques no contienen transacciones.
+- Funciona en un solo nodo, sin consenso entre varios.
+
+## Autor
+
+Josué García Orozco — estudiante de Inteligencia Financiera y de Negocios, Universidad de Guadalajara.
